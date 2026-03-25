@@ -137,11 +137,77 @@ services:
       retries: 3
       start_period: 30s
 
-  
+  # -----------------------------------------------------------------------
+  # EverMemOS Main Application
+  # -----------------------------------------------------------------------
+  evermemos-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: evermemos-app
+    restart: unless-stopped
+    ports:
+      - "1995:1995"
+    env_file:
+      - .env
+    environment:
+      # Override DB hosts to use container names
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      ES_HOSTS: http://elasticsearch:9200
+      MILVUS_HOST: milvus-standalone
+      MILVUS_PORT: 19530
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      milvus-standalone:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - memsys-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1995/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
-  # Memsys main application has been changed to local running:
-  # Use uv to start the application locally, for example:
-  #   uv run python run.py
+  # -----------------------------------------------------------------------
+  # EverMemOS MCP Server
+  # Exposes memory tools via MCP protocol (HTTP transport)
+  # Connect Claude Code via stdio using: python mcp_server/server.py
+  # Or connect remotely via: http://<host>:3456/mcp
+  # -----------------------------------------------------------------------
+  evermemos-mcp:
+    build:
+      context: .
+      dockerfile: mcp_server/Dockerfile
+    container_name: evermemos-mcp
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+    environment:
+      EVERMEMOS_BASE_URL: http://evermemos-app:1995
+      EVERMEMOS_USER_ID: ${EVERMEMOS_USER_ID:-default_user}
+      EVERMEMOS_GROUP_ID: ${EVERMEMOS_GROUP_ID:-default_group}
+      MCP_PORT: 3456
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      evermemos-app:
+        condition: service_healthy
+    networks:
+      - memsys-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3456/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   mongodb_data:

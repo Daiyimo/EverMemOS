@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "evermemos": {
+      "command": "python",
+      "args": ["/e/project/EverMemOS/mcp_server/server.py", "--transport", "stdio"],
+      "env": {
+        "EVERMEMOS_BASE_URL": "http://localhost:1995",
+        "EVERMEMOS_USER_ID": "your_user_id",
+        "EVERMEMOS_GROUP_ID": "claude_code_session"
+      }
+    }
+  }
+}
